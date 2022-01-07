@@ -1,0 +1,6 @@
+word-cl
+*.fasl
+
+# Don't add these - they're unlicensed
+enable1.txt
+popular.txt
