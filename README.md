@@ -12,7 +12,7 @@ current directory for a file named `popular.txt`.  (The standard
 `/usr/share/dict/words` file on Unix-like systems is far too
 verbose for an enjoyable word game.)  That file can be found at
 [dolph/dictionary](https://github.com/dolph/dictionary/), but unfortunately
-it's not licensed, so I can't use it
+it's not licensed, so I can't include it here.
 
 ## Compatibility Notes
 
