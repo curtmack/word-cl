@@ -27,18 +27,17 @@ ampersands, or other symbols).  This function relies on the letters A-Z
     (and (= (length uc-word) word-length)
          (every 
           (lambda (c)
-            (and (char<= #\A   c)
-                 (char<=   c #\Z)))
+            (char<= #\A c #\Z))
            uc-word)
          uc-word)))
 
-(defun load-word-list (&key
-                       (filespec #p"./popular.txt")
-                       (word-length 5))
-  "Load all valid words (as by VALID-WORD-P with the give WORD-LENGTH)
+(defun load-word-list (filename
+                       &key (word-length 5))
+  "Load all valid words (as by VALID-WORD-P with the given WORD-LENGTH)
 from a dictionary text file containing a single word on each line.  Returns
 those words as a vector."
-  (with-open-file (stream filespec :direction :input)
+  (check-type filename (or string pathname))
+  (with-open-file (stream filename :direction :input)
     (map 'vector
          #'identity
          (loop for word = (read-line stream nil :eof)
@@ -60,19 +59,18 @@ those words as a vector."
 
 (defconstant +csi+ (code-char #x9b))
 
-(defun sgr (destination code)
-  "Print to DESTINATION the Select Graphics Rendition command CODE.
+(defun sgr (destination &rest commands)
+  "Print to DESTINATION the Select Graphics Rendition commands listed by COMMANDS.
 
 DESTINATION is interpreted as in CL:FORMAT."
-  (check-type code (integer 0 *))
-  (format destination "~a~am" +csi+ code))
+  (format destination "~a~{~a~^;~}m" +csi+ commands))
 
 (defun green-color (destination)
   "Set up the terminal to display a green letter."
-  (sgr destination 42))
+  (sgr destination 30 42))
 (defun yellow-color (destination)
   "Set up the terminal to display a yellow letter."
-  (sgr destination 43))
+  (sgr destination 30 43))
 (defun faint-color (destination)
   "Set up the terminal to display a faint (incorrect) letter."
   (sgr destination 2))
@@ -83,24 +81,23 @@ DESTINATION is interpreted as in CL:FORMAT."
 (defun check-guess (guess
                     &key
                     (word-length 5)
-                    words)
-  "Check if GUESS is a valid word of the given WORD-LENGTH contained
-in the sequence of WORDS.  If it is, return the STRING-UPCASE of GUESS;
+                    legal-words)
+  "Check if GUESS is a valid word of the given WORD-LENGTH contained in the
+sequence of LEGAL-WORDS.  If it is, return the STRING-UPCASE of GUESS;
 otherwise, return NIL."
   (let ((uc-guess (string-upcase guess)))
     (and (= (length uc-guess) word-length)
-         (find uc-guess words :test #'string=)
+         (find uc-guess legal-words :test #'string=)
          uc-guess)))
 
 (defun score-guess (guessed-word secret-word)
-  "Given the GUESSED-WORD and SECRET-WORD, score the guess as in
-Mastermind.
+  "Given the GUESSED-WORD and SECRET-WORD, score the guess as in Wordle.
 
-The return value is a list of cons cells, where the CAR of each cons cell
-contains a letter of the guessed word (in order) and the CDR contains
-the score of that letter: :GREEN for a letter in the correct position,
-:YELLOW for a correct letter in the wrong position, and :FAINT for an
-incorrect letter."
+Wordle uses a variant of Mastermind's scoring system.  The return value is a
+list of cons cells, where the CAR of each cons cell contains a letter of the
+guessed word (in order) and the CDR contains the score of that letter: :GREEN
+for a letter in the correct position, :YELLOW for a correct letter in the wrong
+position, and :FAINT for an incorrect letter."
   (let ((score (map 'list
                     (lambda (c) (cons c nil))
                     guessed-word)))
@@ -161,12 +158,11 @@ and ensure output is flushed before returning."
 
 (defun take-guess (io num
                    &rest check-args
-                   &key word-length words)
-  "Take a guess from the I/O stream IO, using the guess number NUM
-for the prompt.  Validate it against WORD-LENGTH and WORDS (as in
-CHECK-GUESS), and loop until a valid guess is given.  Then, return
-the STRING-UPCASE of that guess."
-  (declare (ignorable word-length words))
+                   &key word-length legal-words)
+  "Take a guess from the I/O stream IO, using the guess number NUM for the prompt.
+Validate it against WORD-LENGTH and LEGAL-WORDS (as in CHECK-GUESS), and loop
+until a valid guess is given.  Then, return the STRING-UPCASE of that guess."
+  (declare (ignorable word-length legal-words))
   (prompt io num)
   (loop for guess = (apply
                      #'check-guess
@@ -210,4 +206,4 @@ ends prematurely (as if the word was not guessed)."
   (with-simple-restart (abort "Exit Word-CL")
     (setf *random-state* (make-random-state t))
     (run-game :num-guesses 6
-              :words (load-word-list :filespec #p"popular.txt"))))
+              :words (load-word-list #p"popular.txt"))))
