@@ -176,24 +176,31 @@ until a valid guess is given.  Then, return the STRING-UPCASE of that guess."
 (defun run-game (&key
                  (num-guesses 6)
                  (io *terminal-io*)
-                 words)
+                 words legal-words)
   "Run the game of Word-CL on the I/O stream IO, allowing NUM-GUESSES
-guesses and with the word list WORDS.
+guesses and with the word list WORDS (for actual answers) and
+LEGAL-WORDS (for valid guesses).
   
 If the word is not guessed, it's displayed and the function returns NIL.
 If it is guessed, a congratulatory message is displayed and the function
 returns T.  If EOF is encountered (i.e. Ctrl-D is pressed), the game
 ends prematurely (as if the word was not guessed)."
+  ;; If legal-words is not provided, re-use words
+  (unless legal-words
+    (setf legal-words words))
   (let ((word-length (length (elt words 0)))
         (secret-word (random-elt words)))
-    (flet ((finish (&rest args)
-             (declare (ignorable args))
+    (flet ((finish ()
              (format io "The word was ~a~%" secret-word)))
-      (handler-bind ((end-of-file #'finish))
+      (handler-bind ((end-of-file
+                       (lambda (c)
+                         (declare (ignore c))
+                         (finish)
+                         (abort))))
         (loop for num from 1 to num-guesses
               as guess = (take-guess io num
                                      :word-length word-length
-                                     :words words)
+                                     :legal-words legal-words)
               do (let ((scored-guess (score-guess guess secret-word)))
                    (format-guess io scored-guess))
               when (string= guess secret-word)
@@ -206,4 +213,5 @@ ends prematurely (as if the word was not guessed)."
   (with-simple-restart (abort "Exit Word-CL")
     (setf *random-state* (make-random-state t))
     (run-game :num-guesses 6
-              :words (load-word-list #p"popular.txt"))))
+              :words (load-word-list #p"popular.txt")
+              :legal-words (load-word-list #p"enable1.txt"))))
